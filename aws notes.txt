@@ -1,0 +1,604 @@
+
+
+
+Security Group                         |              Network ACL
+
+1. Operates at the instance level        1. Operates at the subnet level
+2. Supports allow rules only             2. Supports both allow and deny rules
+3. Is stateful: Return traffic is        3. Is stateless: Return traffic must  
+automatically allowed, regardless          explicitly allowed by the rules
+of any rules
+4. We evaluate all rules before          4. We process rules in number order
+ deciding whether to allow traffic         when deciding whether to allow traffic
+5. Applies to an instance only if        5. Automatically applies to all instances in the 
+someone specifies the security group        subnet it's associated with (therefore, you 
+when launching the instance, or             don't have to rely on users to specify the
+associates the security group with          security group)
+the instance later on.
+
+
+**VPC Flow logs:
+1. Capture information about IP traffic going into your interfaces:
+	a. VPC flow logs
+	b. Subnet flow logs
+	c. Elastic Network Interface flow logs
+2. Helps to monitor & troubleshoot connectivity issues. Example:
+	a. Subnet to internet
+	b. Subnet to subnet
+	c. Internet to subnet
+3. Captures network info from AWS managed interfaces too. Elastic LB, ElastiCache, RDS, Aurora, etc.
+4. VPC flow logs data can go to S3, CloudWatch Logs, and Kinesis Data Firehose
+
+
+**Vpc Peering:
+1. Connect two VPC, privately using AWS' network
+2. Make them behave as if they were in the same network
+3. Must not have overlapping CIDR (IP address range)
+4. VPC Peering connection is not transitive (must be established for each VPC that need to communicate with one another.) 
+	-> It means if VPC-A <-> VPC-B && VPC-A <-> VPC-C 
+	-> This does not means VPC-B is connected thorough VPC-C with VPC-A as proxy
+	-> To connected B and C we must directly connect them using VPC peering
+
+
+**VPC endpoint:
+1. Endpoints allow you to connect to AWS Services using a private network instead of the public www network
+2. This gives you enhanced security and lower latency to access AWS services
+3. for example: 
+	-> NOTE: All AWS services are in the public network 
+	-> Your ec2 instance in the private subnet wants to an AWS service in the public network.
+	-> To do so it will talk to it through VPC endpoint gateway
+	-> This way it can talk to S3 or DynamoDB privately (the traffic does not goes through the internet)
+4. VPC Endpoint Gateway: only supports S3 & DynamoDB
+5. Only thing to remember: Use VPC endpoint only if you want private access to AWS services within your VPC.
+6. Only used within your VPC
+
+**Site to Site VPN & Direct Connect:
+1. Site to Site VPN:
+	a. Connect an on-premises VPN to AWS
+	b. The connection is automatically encrypted
+	c. Goes over the public internet
+2. Direct Connect (DX)
+	a. Establish a physical connection between on-premises and AWS
+	b. The connection is private, secure and fast
+	c. Goes over a private network
+	d. Takes at least a month to establish
+
+
+**VPC - Closing Comments:
+1. VPC: Virtual private cloud
+2. Default VPC is created for you automatically
+3. Only one default VPC per AWS region
+4. Subnets: Tied to an AZ, network partition of the VPC
+5. Internet Gateway/Instances: Give internet access to private subnets
+6. NAT Gateway: Give internet access to private subnets
+7. NACL: Stateless, subnet rules for inbound and outbound
+8. Security Groups: Stateful, operate at the EC2 instance level or ENI
+9. VPC Peering: Connect two VPC with non overlapping IP ranges, non transitive
+10. VPC Endpoint: Provide private access to AWS Services within VPC
+11. VPC Flow Logs: Network traffic logs
+12. Site to Site VPN: VPN over public internet bw on-premises and AWS
+13. Direct Connect: direct private connection to AWS
+
+
+***Typical 3 tier solution architecture:
+1. Deploy ELB in the public subnet
+2. To access ELB we need to do DNS query to know where it is (Route 53)
+3. This way our user will directly be talking the ELB
+4. ELB will spread traffic to our EC2 instances which will be in an Auto Scaling group
+5. But the auto-scaling group will be in the private subnet as they need not to be publicly accessible, only from the ELB.
+6. We can have another private subnet for data also called DATA SUBNET
+7. It can contain RDS and Elasticache
+
+
+**LAMP stack on EC2:
+1. Linux: OS for EC2 instances
+2. Apache: Web Server that runs on Linux (EC2)
+3. MySQL: database on RDS
+4. PHP: Application Logic (running on Apache)
+5. Can add ElastiCache
+6. To store local app data & software: EBS drive (root)
+
+**Wordpress on AWS
+1. Client sends image through LB which is on the public subnet.
+2. And on the private subnet we have EC2 instances connected to the EFS
+
+
+***Amazon S3 - Use cases:
+1. Backup and storage
+2. Disaster Recovery
+3. Archive
+4. Hybrid Cloud Storage
+5. Application Hosting
+6. Media Hosting
+7. Data lakes & big data analytics
+8. Software delivery
+9. Static website
+10. Example:
+	-> Nasdaq stores 7yrs of data into S3 Glacier (archive service of S3)
+	-> And Sysco runs analytics on it's data and gain business insights from Amazon S3
+
+
+**S3 - Buckets
+1. Amazon S3 allows people to store objects (files) in buckets (top lvl directories)
+2. Buckets must have a globally unique name(across all regions, all accounts)
+3. Buckets are defined at the region level
+4. S3 looks like global service but buckets are created in a region
+5. Naming convention:
+	-> No uppercase or underscore
+	-> min 3 chars
+	-> Not an IP
+	-> must start with lowercase letter or number
+
+
+**S3 - Key
+1. Objects (files), they have a key
+2. The key is the FULL path:
+	-> s3://my-bucket/my_file.txt
+		-> here, my_file.txt is the key
+	-> s3://my-bucket/my_folder/text.txt
+		-> my_folder/text.txt is the key
+3. The key is prefix + object name
+	-> e.g. prefix is: my_folder + object name: text.txt
+4. There's no concept of directories within buckets (although the UI will trick you to think otherwise)
+5. Just keys(prefix + object) with very long names that contain slashes ('/')
+
+**S3 - Objects:
+1. Object values are the content of the body:
+	-> Max. Object Size is 5TB 
+	-> If uploading more than 5GB, must use 'multi-part upload' to upload the file into several parts.
+		-> e.g a file of 5TB must be broken down into 1000 parts and uploaded of 5GB each
+		
+2. Metadata (list of key-value pairs - by the system or the user)
+3. Tags (Unicode key-value pair - upto 10) - useful for security/lifecycle
+4. Version ID (if versioning is enabled)
+
+
+**S3 - Security
+1. User-Based:
+	-> IAM Policies: Which API calls should be allowed for a specific user from IAM
+2. Resource-Based
+	-> Bucket Policies: bucket wide rules from the S3 console - also allows cross account access to your S3
+	-> Object Access Control List (ACL) - finer grain (can be disabled)	
+	-> Bucket Access Control List (ACL) - less common (can be disabled)
+3. Note: an IAM principal can access an S3 object if:
+	-> The user IAM permissions ALLOW it, OR the resource policy ALLOWS it
+	-> AND there's no explicit DENY
+4. Encryption: encrypt objects in S3 using encryption keys
+
+
+
+**S3 Bucket Policies:
+
+{
+	"Version" : "2012-10-17",
+	"Statement" : [
+		{
+			"Sid" : "PublicRead",
+			"Effect" : "Allow",
+			"Principal" : "*",
+			"Action" : ["s3:GetObject"],
+			"Resource" : ["arn:aws:s3:::examplebucket/*"]
+		}
+	]
+}
+
+1. JSON based policies:
+	a. Resources: buckets and objects
+	b. Effect: allow/deny
+	c. Actions: Set of API to Allow or Deny
+	d. Principal: The account or user to apply the policy to.
+2. Use S3 bucket policy to:
+	a. Grant public access to the bucket
+	b. Force objects to be encrypted at upload
+	c. Grant access to another account (Cross Account)
+
+
+**Bucket settings to Block Public Access:
+1. These settings were created to prevent company data leaks
+2. If you know your bucket should never be public, leave these on
+3. Can be set at the account level.
+
+
+**S3 - Static Website Hosting:
+1. S3 can host static websites and have them accessible on the internet
+2. If you get a 403 error, make sure the bucket policy allows public reads.
+
+
+**S3 versioning:
+1. You can version your files in Amazon S3
+2. It is enabled at the bucket level
+3. Same key overwrite will change the version: 1,2,3...
+4. It is the best practice to version your buckets:
+	-> Protect against unintended deletes (ability to restore a version)
+	-> Easy roll back to previous version
+5. Notes:
+	-> Any file that is not versioned prior to enabling versioning will have version 'null'
+	-> Suspending versioning does not delete the previous versions
+
+
+**S3 - Replication (CRR & SRR)
+1. Must enable versioning in source and destination buckets
+2. Cross-Region Replication (CRR)
+3. Same-Region Replication (SRR)
+4. Buckets can be in different AWS accounts
+5. Copying is done async
+6. Must give proper IAM permissions to S3
+7. Use cases:
+	-> CRR: compliance, lower latency access, replication across accounts
+	-> SRR: log aggregation, live replication, production and test accounts
+8. After you enable  replication, only new objects are replicated
+9. Optionally, you can replicate existing objects using S3 Batch Replication
+	-> Replicates existing objects that failed replication
+10. For DELETE operations:
+	-> Can replicate delete markers from source to target (optional)
+	-> Deletions with a version ID are not replicated (to avoid malicious deletes)
+11. There is no chaining of replication:
+	-> If bucket a has replication into bucket b and bucket b has replication into bucket c
+	-> Then objects created in bucket a are not replicated to bucket c.
+
+
+
+**S3 Storage Classes:
+1. S3 Standard - General Purpose
+2. S3 Standard-Infrequent Access (IA)
+3. S3 One Zone-Infrequent Access
+4. Glacier Instant Retrieval
+5. Glacier Flexible Retrieval
+6. Glacier Deep Archive
+7. Intelligent Tiering
+-> Can move bw classes manually or using S3 Lifecycle config
+
+
+**S3 Durability and Availability:
+1. Durability:
+	a. High durability (99.99%) of objects across multiple AZ
+	b. If you store 10-mil objects in S3, you can on average expect to lose a single object every 10k yrs
+	c. same for all storage classes
+2. Availability:
+	a. Measures how readily available a service is
+	b. Varies depending on storage class
+	c. Example: S3 standard has 99.99% availability = not available 53 min per year
+
+
+**S3 storage classes - General purpose:
+1. 99.99% availability
+2. Used for frequent accessed data
+3. Low latency and high throughput
+4. Sustain 2 concurrent facility failures
+5. Use cases: Big data analytics, mobile & gaming apps, content distribution, etc.
+
+
+**S3 storage classes - Infrequent Access:
+1. For data is less frequently accessed, but requires rapid access when needed
+2. Lower cost than S3 General Purpose
+3. S3 Standard-Infrequent Access (S3 Standard-IA)
+	-> 99.9% availability (bit lower)
+	-> Use cases: Disaster recovery, backups
+4. S3 One Zone-Infrequent Access (S3 One Zone-IA)
+	-> High durability (99.99%) in a single AZ, data lost when AZ is destroyed
+	-> Use cases: Storing secondary backup copies of on-premise data, or data you can recreate.
+
+
+**S3 storage classes - Glacier:
+1. Low cost object storage meant for archiving/backup
+2. Pricing: price for storage + object retrieval cost
+3. S3 Glacier Instant Retrieval:
+	a. Millisecond retrieval, great for data accessed once a quarter
+	b. Minimum storage duration of 90 days
+4. S3 Glacier Flexible Retrieval (Formerly S3 Glacier):
+	a. Expedited (1 to 5 mins), Standard (3 to 5 hrs), Bulk (5 to 12 hrs) - free
+	b. Minimum storage duration of 90 days
+5. S3 Glacier Deep Archive - For long term storage:
+	a. Standard (12hrs), Bulk (48hrs)
+	b. Minimum storage duration of 180 days
+
+
+**S3 storage classes - Intelligent-Tiering:
+1. Small monthly monitoring and auto-tiering fee
+2. Moves objects automatically bw Access Tiers based on usage
+3. There are no retrieval charges in S3 intelligent-tiering
+4. Tiers:
+	a. Frequent Access Tier (automatic): default tier
+	b. Infrequent Access tier (automatic): objects not accessed for 30days
+	c. Archive Instant Access Tier (automatic): objects not accessed for 90days
+	d. Archive Access Tier (optional): configurable from 90days to 700+ days
+	e. Deep Archive Access tier (optional): config from 180 days to 700+ days.
+
+#Note: All storage classes have upto 3 AZ except 'One Zone-IA'
+
+
+***EC2 Instance Metadata (IMDS)
+1. AWS EC2 Instance Metadata (IMDS) is a powerful but one of the least known feature to developers
+2. It allows AWS EC2 instances to 'learn about themselves' without using an IAM Role for that purpose.
+3. The URL is http://169.254.169.254/latest/meta-data
+4. You can retrieve the IAM Role name from the metadata, but you cannot retrieve the IAM policy
+5. Metadata = Info about the EC2 instance
+6. Userdata = launch script of the EC2 instance
+
+
+**IMDSv1 vs IMDSv2
+a. IMDSv1 access the url from before directly.
+b. IMDSv2 is more secure and is done in two steps:
+	a. Get session token (limited validity) - using headers & PUT
+	b. Use session token in IMDSv2 calls - using headers
+
+
+
+***MFA with CLI:
+1. To use MFA with the CLI, you must create a temporary session.
+2. To do so, you must run the STS GetSessionToken API call:
+	-> aws sts get-session-token --serial-number $arn-of-your-device --token-code $your-code-from-auth-app --duration 3600
+	-> it returns: 	accessKeyId, secretAccessKey, sessionToken and expiration
+
+
+
+
+***AWS SDK Overview:
+1. We have to use the AWS SDK when coding against AWS Services such as DynamoDB
+2. Fun fact... the AWS CLI uses the puthon SDK (boto 3)
+3. The exam expects you to know when you should use an SDK
+4. Good to know: if you don't configure a default region, us-east-1 will be chose by default.
+
+
+***AWS Limits (Quotas)
+1. API Rate Limits:
+	a. DescribeInstances API for EC2 has a limit of 100 calls per second
+	b. GetObject on S3 has a limit of 5500 GET per second per prefix
+	c. For Intermittent Errors: implement Exponential Backoff
+	d. For Consistent Errors: request an API throttling limit increase
+2. Service Quotas (Service Limits)
+	a. Running On-Demand Standard Instances: 1152 vCPU
+	b. You can request a service limit increase by opening a ticket
+	c. You can request a service quota increase by using the Service Quotas API
+
+
+
+
+**Exponential Backoff (any AWS service)
+1. If you get ThrottlingException intermittently, use exponential backoff
+2. Retry mechanism already included in AWS SDK API calls
+3. Must implement yourself if using the AWS API as-is or in specific cases (not using the SDK):
+	a. Must only implement the retries on 5xx server errors and throttling
+	b. Do not implement on the 4xx client errors
+4. How does it work? 
+	-> If we make a request then before making another request double the wait time and so on.
+	-> Result? Less load on the server
+
+
+***AWS CLI Credentials Provider Chain:
+-> The CLI will look for credentials in the following order:
+	a. Command line options: --args
+	b. Environment variables: $ENV
+	c. CLI credentials file: /aws/credentials
+	d. CLI configuration file: /aws/config
+	e. Container credentials: For ECS tasks
+	f. Instance profile credentials: for EC2 Instance Profiles
+
+
+**AWS SDK Credentials Provider Chain:
+-> The java SDK will look for credentials in the following order:
+	a. Java system properties: aws.accessKeyId and aws.secretKey
+	b. Environment Variables: AWS_ACCESSKEY and AWS_SECRET_KEY
+	c. The default credential profiles file: /aws/credentials
+	d. ECS containsiner credentails: For ECS containers
+	e. Instance profile credentials: Used on EC2 instances
+
+
+**AWS Credentials Scenario:
+1. An app deployed on an EC2 instance is using env vars with credentials from an IAM user to call the S3 API
+2. The IAM user has S3FullAccess permissions
+3. The app only uses one S3 bucket, so according to best practices:
+	a. An IAM Role & EC2 instance profile was created for the EC2 instance
+	b. The Role was assigned the minimum permissions to access that onc S3 bucket.
+4. The IAM instance profile was assigned to the EC2 instance, but it still has access to all S3 buckets. Why?
+	-> The credentials chain is still giving priorities to the env vars
+	-> Unset the env vars and leverage the EC2 instance profile credentials
+
+
+**AWS Credentials Best practices:
+1. Overall, NEVER EVER STORE AWS CREDENTIALS IN YOUR CODE
+2. Best practice is for credentials to be inherited from the credentials chain
+3. If working within AWS, use IAM Roles
+	a. EC2 instances Roles for EC2 instances
+	b. ECS Roles for ECS tasks
+	c. Lambda Roles for Lambda functions
+4. If working outside of AWS, use env vars/named profiles
+
+
+
+***Signing AWS API requests:
+1. When you call the AWS HTTP API, you sign the request so that AWS can identify you, using your AWS credentials (access key & secret key)
+2. Note: some requests to S3 don't need to be signed
+3. If you use the SDK or CLI, the HTTP requests are signed for you.
+4. You should sign an AWS HTTP request using Signature v4 (SigV4)
+
+
+**SigV4 Request examples:
+1. HTTP Header option (signature in Authorization header)
+2. Query param: X-Amz-Signature
+
+
+
+***Advance S3
+
+**S3- Moving bw storage classes
+1. You can transition objects between storage classes
+2. For infrequently accessed object, move them to standard IA
+3. For archive objects that you don't need fast access to, move them to Glacier or Glacier Deep Archive
+4. Moving objects can be automated using a Lifecycle Rules
+
+**S3- Lifecycle Rules
+1. Transition Actions- configure objects to transition to another storage class:
+	a. Move objects to Standard IA class 60 days after creation
+	b. Move to Glacier for archiving after 6months
+2. Expiration actions- configure objects to expire (delete) after some time:
+	a. Access log files can be set to delete after 365 days
+	b. Can be used to delete old versions of files (if versioning is enabled)
+	c. Can be used to delete incomplete Multi-Part uploads
+3. Rules can be created for a certain prefix (example: s3://mybucket/mp3/*)
+4. Rules can be created for a certain object tag (example: Department, Finance)
+
+
+**S3 - Scenario
+1. Your app creates thumbnails and uploaded to S3. These thumbnails can easily be recreated, only need to keep for 60 days. First 60 days immediate retrieval after 60 days can wait upto 6hrs. How you design?
+
+ans1: use S3 standard with a lifecycle config to transition them to Glacier after 60 days.
+ans2: use One-Zone IA, with lifecycle config to delete them after 60 days
+
+2. You should be able to recover your deleted S3 objects immediately for 30days, rarely. After this and upto 365 days, deleted objects must be recoverable within 48hrs
+
+ans:
+step1: Enable S3 versioning
+step2: transition 'noncurrent versions' of the object to Standard IA
+step3: afterwards transition the noncurrent versions to Glacier Deep Archive
+
+**S3 Analytics
+1. Help you decide when to transition objects to the right storage class
+2. Recommendations only for Standard and Standard IA
+	-> Does not works for One Zone IA or Glacier
+3. Report is updated daily
+4. 24 to 48 hrs to start seeing data analysis
+5. Good first step to put together lifecycle rules (or improve them)
+
+
+***S3 Event Notifications:
+1. S3 Object creation, removal, restoration and replication can generate events
+2. Object name filtering possible (*.jpg)
+3. Use case: generate thumbnails of images uploaded to S3
+4. Can create as many S3 events as desired
+5. S3 event notifications typically deliver events in seconds but can sometimes take a minute or longer
+6. You need IAM permissions to send notification from one AWS service (S3) to another AWS service
+7. Typical event notification targets: SNS, SQS and lambda
+
+**S3- Amazon EventBridge
+1. Amazon EventBridge: All event goes through Amazon EventBridge no matter what
+2. S3 -> event -> eventbridge -> IAM rules -> 18+ AWS services
+3. Allows advanced filtering options with JSON rules  (metadata, object size, name...)
+4. Multiple Destinations - ex Step Functions, Kinesis Streams/Firehose...
+5. EventBridge Capabilities - Archive, Replay Events, Reliable delivery
+
+
+
+**S3 Baseline Performance
+1. Amazon S3 automatically scales to high req rates, latency 100-200 ms
+2. Your app can achieve atleast 3,500 PUT/COPY/POST/DELETE or 5,500 GET/HEAD req per sec per prefix in a bucket
+3. There is no limit to the number of prefixes in a bucket
+4. example:
+	a. bucket/folder1/sub1/file => prefix: /folder1/sub1/
+	b. bucket/folder1/sub2/file => prefix: /folder1/sub2/
+	c. bucket/1/file => /1/
+	d. bucket/2/file => /2/
+
+5. If you spread reads across all prefixes evenly from above example, you can achieve 22,000 req per sec for GET and HEAD
+
+**S3 performance:
+1. Multi-Part upload:
+	a. recommended for files > 100MB
+	b. Must be used for files > 5GB
+	c. Can help parallelize uploads and maximize the bandwidth
+2. S3 Transfer Acceleration
+	a. Increase transfer speed by transferring file to an AWS edge location which will forward the data to the S3 bucket in the target region.
+	b. Compatible with multi part upload.
+	c. Meaning you upload in USA to Australia. AWS edge location in USA picks up on the public internet, u upload there and AWS transfers the data from USA to Australia using its private nw
+3. S3 Byte Range Fetches:
+	a. Parallelize GETs by requesting specific byte ranges
+	b. Can be used to speed up downloads
+	c. Meaning your data on S3 is divided into chunks and you can fetch these chunks in parallel
+	d. Instead of getting the entire file u can also retrieve partial data (example head of a file)
+
+**S3 User-Defined Object Metadata & S3 Object Tags
+1. S3 User-Defined Object Metadata
+	a. When uploading an object, you can also assign metadata
+	b. Name-value (key-value) pairs
+	c. User-defined metadata names must begin with 'x-amz-meta-'
+	d. Amazon S3 stores user-defined metadata keys in lowercase
+	e. Metadata can be retrieved while retrieving the object
+2. S3 Object Tags
+	a. Key-value pairs for objects in S3
+	b. Useful for fine-grained permissions (only access specific objects with specific tags)
+	c. Useful for analytics purposes (using S3 analytics to group by tags)
+
+#You cannot search or filter the object metadata or object tags
+#If u still wish to search, u must use an external DB as a search index such as DynamoDB
+
+
+
+***S3 Security
+
+**S3 - Object Encryption:
+1. You can encrypt objects in S3 buckets using one of 4 methods.
+2. Server Side Encryption (SSE):
+	a. SSE with S3-Managed Keys (SSE-S3) - Enabled by default.
+		->Encrypts S3 objects using keys handled, managed and owned by AWS
+	b. SSE with KMS Keys stored in AWS KMS (SSE-KMS)
+		-> Leverages AWS Key management system (KMS) to manage encryption keys
+	c. SSE Encryption with Customer-Provider Keys (SSE-C)
+		-> When you want to manage your own encryption keys
+3. Client-Side Encryption
+
+#Its important to understand which to use when
+
+
+**S3 Encryption - SSE S3:
+1. Encryption using keys handled, managed and owned by AWS
+2. Object is encrypted server side
+3. Encryption type is AES-256
+4. Must set header "x-amz-server-side-encryption" : "AES256"
+5. Enabled by default for new buckets & new objects
+
+user -> http/s + header -> S3(object + S3 owned key =  S3 bucket)
+
+
+**S3 Encryption - SSE-KMS
+1. Encryption using keys handled and managed by AWS KMS (Key management system)
+2. KMS advantages: user control + audit key usage CloudTrail
+3. Must set header "x-amz-server-side-encryption" : "aws:kms"
+4. Object is encrypted server side
+
+user -> http/s + header -> S3(object + KMS key =  S3 bucket)
+
+**SSE-KMS Limitations:
+1. Performance limited by KMS limits
+2. When you upload, it calls the GenerateDataKey KMS API
+3. When you download, it calls the Decrypt KMS API
+4. Count towards the KMS quota per second (5_500, 10_000, 30_000 req/s based on region)
+5. If the requests are frequent then you may end up with a bottleneck/throttling
+6. You can request a quota increase using the service quotas console.
+
+
+** S3 Encryption - SSE-C
+1. SSE using keys fully managed by the customer outside of AWS
+2. S3 does not store the encryption key you provide
+3. HTTPS must be used
+4. Encryption key must be provided in HTTP headers, for every HTTP request made
+
+user -> http/s + header -> S3(object + Client-Provided key =  S3 bucket)
+
+
+**S3 Encryption - Client Side Encryption
+1. Use client libraries such as S3 Client-Side-Encryption Library
+2. Clients must encrypt data themselves before sending to S3
+3. Client must decrypt data themselves when retrieving from S3
+4. Customer fully manages the keys and encryption lifecycle
+
+user -> file + client key -> encrypted file -> http/s -> S3 bucket
+
+
+**S3 - Encryption in transit (SSL/TLS)
+1. Encryption in flight is also called SSL/TLS
+2. S3 exposes two endpoints:
+	a. HTTP endpoint - non encrypted
+	b. HTTPS endpoint - encrypted in flight
+3. HTTPS is recommended
+4. HTTPS is mandatory for SSE-C
+
+**S3 - Force encryption in transit (aws:SecureTransoport)
+
+Add this statement: 
+		"Effect" : "Deny",
+		"Condition" : {
+			"Bool" : {
+				"aws:SecureTransport" : "false"
+			}
+		}
+
